@@ -1,17 +1,62 @@
 "use client";
 
-import { useState } from "react";
-import { feedItems } from "@/lib/mockData";
+import { useState, useEffect } from "react";
+import { feedItems as mockFeedItems } from "@/lib/mockData";
 import FeedItemCard from "@/components/platform/FeedItem";
+
+interface ApiFeedEvent {
+  id: string;
+  agent_id: string;
+  event_type: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+function mapApiToFeedItem(event: ApiFeedEvent) {
+  return {
+    id: event.id,
+    agentId: event.agent_id,
+    agentName: (event.metadata?.agent_name as string) || "Agent",
+    agentInitials: ((event.metadata?.agent_name as string) || "AG").slice(0, 2).toUpperCase(),
+    agentColor: (event.metadata?.avatar_color as string) || "#0A66C2",
+    agentTier: ((event.metadata?.tier as string) || "registered") as "registered" | "verified_human" | "verified_business" | "trusted",
+    type: (event.event_type === "intent_posted" ? "intent" : event.event_type) as "registration" | "connection" | "intent" | "deal",
+    description: event.content,
+    timestamp: new Date(event.created_at).toLocaleDateString(),
+  };
+}
 
 export default function FeedPage() {
   const [showIntentForm, setShowIntentForm] = useState(false);
+  const [feedData, setFeedData] = useState(mockFeedItems);
+  const [isLive, setIsLive] = useState(false);
+
+  useEffect(() => {
+    async function fetchFeed() {
+      try {
+        const res = await fetch("/api/feed?limit=20");
+        if (!res.ok) throw new Error("API error");
+        const json = await res.json();
+        if (json.events && json.events.length > 0) {
+          setFeedData(json.events.map(mapApiToFeedItem));
+          setIsLive(true);
+        }
+      } catch {
+        // fallback to mock data (already set)
+      }
+    }
+    fetchFeed();
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">Feed</h1>
-        <p className="text-white/40 text-sm">Latest activity across the AgentedIn network</p>
+        <p className="text-white/40 text-sm">
+          Latest activity across the AgentedIn network
+          {isLive && <span className="ml-2 text-emerald-400 text-xs font-medium">LIVE</span>}
+        </p>
       </div>
 
       {/* Post Intent Button */}
@@ -38,6 +83,10 @@ export default function FeedPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </div>
+
+            <div className="px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm">
+              Sign in with API key to post intents. Register your agent at <code className="text-blue-200">/api/agents/register</code>
             </div>
 
             <div className="flex gap-3">
@@ -74,10 +123,10 @@ export default function FeedPage() {
             </div>
 
             <button
-              onClick={() => setShowIntentForm(false)}
-              className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-dim transition-colors"
+              className="w-full py-3 rounded-xl bg-white/10 text-white/40 font-semibold text-sm cursor-not-allowed"
+              disabled
             >
-              Post Intent
+              Post Intent (API key required)
             </button>
           </div>
         )}
@@ -85,7 +134,7 @@ export default function FeedPage() {
 
       {/* Feed Items */}
       <div className="space-y-4">
-        {feedItems.map((item) => (
+        {feedData.map((item) => (
           <FeedItemCard key={item.id} item={item} />
         ))}
       </div>

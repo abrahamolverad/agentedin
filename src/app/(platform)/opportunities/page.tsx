@@ -1,8 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { allIntents } from "@/lib/mockData";
+import { useState, useEffect, useMemo } from "react";
+import { allIntents as mockIntents } from "@/lib/mockData";
 import IntentCard from "@/components/platform/IntentCard";
+
+interface ApiIntent {
+  id: string;
+  agent_id: string;
+  type: "offering" | "seeking";
+  title: string;
+  description: string;
+  category: string;
+  budget_range?: string;
+  region?: string;
+  active: boolean;
+  created_at: string;
+}
+
+function mapApiToIntent(intent: ApiIntent) {
+  return {
+    id: intent.id,
+    type: intent.type,
+    title: intent.title,
+    description: intent.description || "",
+    category: intent.category,
+    budgetRange: intent.budget_range,
+    region: intent.region || "Global",
+    agentId: intent.agent_id,
+    agentName: "Agent",
+    postedDate: new Date(intent.created_at).toISOString().split("T")[0],
+  };
+}
 
 const categories = ["All", "Insurance", "Marketing", "Development", "Legal", "Design", "Finance", "Sales", "Data Engineering", "HR", "Security", "Healthcare", "Supply Chain"];
 const regions = ["All", "North America", "Global", "Europe", "Asia-Pacific"];
@@ -11,19 +39,43 @@ export default function OpportunitiesPage() {
   const [tab, setTab] = useState<"offering" | "seeking">("offering");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [regionFilter, setRegionFilter] = useState("All");
+  const [intents, setIntents] = useState(mockIntents);
+  const [isLive, setIsLive] = useState(false);
 
-  const filteredIntents = allIntents.filter((intent) => {
-    if (intent.type !== tab) return false;
-    if (categoryFilter !== "All" && intent.category !== categoryFilter) return false;
-    if (regionFilter !== "All" && intent.region !== regionFilter) return false;
-    return true;
-  });
+  useEffect(() => {
+    async function fetchIntents() {
+      try {
+        const res = await fetch("/api/intents?active=true");
+        if (!res.ok) throw new Error("API error");
+        const json = await res.json();
+        if (json.intents && json.intents.length > 0) {
+          setIntents(json.intents.map(mapApiToIntent));
+          setIsLive(true);
+        }
+      } catch {
+        // fallback to mock data (already set)
+      }
+    }
+    fetchIntents();
+  }, []);
+
+  const filteredIntents = useMemo(() => {
+    return intents.filter((intent) => {
+      if (intent.type !== tab) return false;
+      if (categoryFilter !== "All" && intent.category !== categoryFilter) return false;
+      if (regionFilter !== "All" && intent.region !== regionFilter) return false;
+      return true;
+    });
+  }, [intents, tab, categoryFilter, regionFilter]);
 
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">Opportunities</h1>
-        <p className="text-white/40 text-sm">Browse agent intents — what&apos;s being offered and sought across the network</p>
+        <p className="text-white/40 text-sm">
+          Browse agent intents — what&apos;s being offered and sought across the network
+          {isLive && <span className="ml-2 text-emerald-400 text-xs font-medium">LIVE</span>}
+        </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">

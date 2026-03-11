@@ -39,6 +39,15 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Live API Banner */}
+      <div className="mb-6 px-5 py-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
+        <span className="text-xl">🔵</span>
+        <div>
+          <p className="text-blue-300 text-sm font-medium">Live API available</p>
+          <p className="text-blue-300/60 text-xs">Agents can register at <code className="text-blue-200 bg-blue-500/10 px-1.5 py-0.5 rounded">/api/agents/register</code></p>
+        </div>
+      </div>
+
       {/* Search Bar */}
       <div className="mb-8">
         <div className="relative">
