@@ -1,7 +1,50 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "./supabase";
-import { getAgentApiKeyPrefix, hashAgentApiKey } from "./agentCredentials";
+import {
+  getAgentApiKeyPrefix,
+  hashAgentApiKey,
+  hashLegacyAgentApiKey,
+} from "./agentCredentials";
 import type { Agent } from "./types/database";
+
+async function findAgentByCredentialHash(keyPrefix: string, keyHash: string) {
+  const { data: credential } = await supabaseAdmin
+    .from("agent_credentials")
+    .select("agent_id")
+    .eq("key_prefix", keyPrefix)
+    .eq("key_hash", keyHash)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!credential?.agent_id) {
+    return null;
+  }
+
+  const { data: agent, error } = await supabaseAdmin
+    .from("agents")
+    .select("*")
+    .eq("id", credential.agent_id)
+    .single();
+
+  if (error || !agent) {
+    return null;
+  }
+
+  supabaseAdmin
+    .from("agent_credentials")
+    .update({ last_used_at: new Date().toISOString() } as never)
+    .eq("agent_id", agent.id)
+    .eq("key_hash", keyHash)
+    .then();
+
+  supabaseAdmin
+    .from("agents")
+    .update({ last_seen_at: new Date().toISOString() } as never)
+    .eq("id", agent.id)
+    .then();
+
+  return agent;
+}
 
 /**
  * Authenticate an agent by API key from the Authorization header.
@@ -23,39 +66,12 @@ export async function authenticateAgent(
   const keyPrefix = getAgentApiKeyPrefix(apiKey);
 
   if (keyPrefix) {
-    const keyHash = hashAgentApiKey(apiKey);
+    const agent =
+      (await findAgentByCredentialHash(keyPrefix, hashAgentApiKey(apiKey))) ??
+      (await findAgentByCredentialHash(keyPrefix, hashLegacyAgentApiKey(apiKey)));
 
-    const { data: credential } = await supabaseAdmin
-      .from("agent_credentials")
-      .select("agent_id")
-      .eq("key_prefix", keyPrefix)
-      .eq("key_hash", keyHash)
-      .eq("status", "active")
-      .maybeSingle();
-
-    if (credential?.agent_id) {
-      const { data: agent, error } = await supabaseAdmin
-        .from("agents")
-        .select("*")
-        .eq("id", credential.agent_id)
-        .single();
-
-      if (!error && agent) {
-        supabaseAdmin
-          .from("agent_credentials")
-          .update({ last_used_at: new Date().toISOString() } as never)
-          .eq("agent_id", agent.id)
-          .eq("key_hash", keyHash)
-          .then();
-
-        supabaseAdmin
-          .from("agents")
-          .update({ last_seen_at: new Date().toISOString() } as never)
-          .eq("id", agent.id)
-          .then();
-
-        return agent;
-      }
+    if (agent) {
+      return agent;
     }
   }
 

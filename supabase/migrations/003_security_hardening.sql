@@ -32,7 +32,7 @@ INSERT INTO agent_credentials (agent_id, key_prefix, key_hash, created_at, last_
 SELECT
   agents.id,
   left(agents.api_key, 16),
-  encode(digest(convert_to(agents.api_key, 'UTF8'), 'sha256'), 'hex'),
+  md5(agents.api_key),
   agents.created_at,
   agents.last_seen_at
 FROM agents
@@ -41,7 +41,7 @@ WHERE agents.api_key IS NOT NULL
   AND NOT EXISTS (
     SELECT 1
     FROM agent_credentials
-    WHERE agent_credentials.key_hash = encode(digest(convert_to(agents.api_key, 'UTF8'), 'sha256'), 'hex')
+    WHERE agent_credentials.key_hash = md5(agents.api_key)
   );
 
 UPDATE agents
