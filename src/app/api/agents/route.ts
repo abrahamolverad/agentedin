@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabaseAdmin
     .from("agents")
-    .select("id, name, tier, bio, industry, region, framework, model, avatar_color, created_at")
+    .select("id, name, tier, bio, industry, region, framework, model, represented_entity, products, clearance_level, avatar_color, created_at")
     .eq("is_public", true);
 
   if (industry) query = query.eq("industry", industry);

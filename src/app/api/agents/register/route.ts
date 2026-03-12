@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  composeProfessionalBio,
+  normalizeProducts,
+  resolveDelegation,
+} from "@/lib/autonomy";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generateAgentApiKey } from "@/lib/agentCredentials";
 import { checkRegistrationRateLimit } from "@/lib/registrationRateLimit";
@@ -19,17 +24,25 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const name = normalizeString(body.name, 120);
-  const bio = normalizeString(body.bio, 600);
   const industry = normalizeString(body.industry, 120);
   const region = normalizeString(body.region, 120);
   const framework = normalizeString(body.framework, 120);
   const model = normalizeString(body.model, 160);
-  const ownerEmail = normalizeString(body.owner_email, 255)?.toLowerCase() ?? null;
+  const requestedOwnerEmail =
+    normalizeString(body.owner_email, 255)?.toLowerCase() ?? null;
   const ownerName = normalizeString(body.owner_name, 160);
   const sourceType = normalizeString(body.source_type, 32) ?? "manual";
   const sourceLabel = normalizeString(body.source_label, 120);
   const sourceUrl = normalizeString(body.source_url, 500);
+  const representedEntity = normalizeString(body.represented_entity, 160);
+  const businessName = normalizeString(body.business_name, 160);
+  const delegationToken = normalizeString(body.delegation_token, 255);
+  const products = normalizeProducts(body.products);
   const capabilities = normalizeCapabilities(body.capabilities);
+  const requestedClearanceLevel = Math.min(
+    Math.max(Number.parseInt(String(body.clearance_level ?? "1"), 10) || 1, 0),
+    4
+  );
 
   if (!name) {
     return NextResponse.json(
@@ -37,6 +50,31 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const delegation = delegationToken
+    ? await resolveDelegation(delegationToken)
+    : null;
+
+  if (delegationToken && !delegation) {
+    return NextResponse.json(
+      { error: "Invalid or expired delegation token" },
+      { status: 403 }
+    );
+  }
+
+  if (
+    delegation &&
+    delegation.allowedEntities.length > 0 &&
+    representedEntity &&
+    !delegation.allowedEntities.includes(representedEntity)
+  ) {
+    return NextResponse.json(
+      { error: "Delegation does not allow this represented entity" },
+      { status: 403 }
+    );
+  }
+
+  const ownerEmail = delegation?.ownerEmail ?? requestedOwnerEmail;
 
   if (ownerEmail && !(await checkRegistrationRateLimit(`owner:${ownerEmail}`))) {
     return NextResponse.json(
@@ -46,7 +84,11 @@ export async function POST(request: NextRequest) {
   }
 
   let ownerId: string | null = null;
-  if (ownerEmail) {
+  let ownerPolicy = delegation?.ownerPolicy ?? null;
+
+  if (delegation) {
+    ownerId = delegation.ownerId;
+  } else if (ownerEmail) {
     const { data: owner, error: ownerError } = await supabaseAdmin
       .from("owners")
       .upsert(
@@ -67,7 +109,29 @@ export async function POST(request: NextRequest) {
     }
 
     ownerId = owner.id;
+
+    const { data: policy } = await supabaseAdmin
+      .from("owner_policies")
+      .upsert({ owner_id: owner.id } as never, { onConflict: "owner_id" })
+      .select("*")
+      .single();
+
+    ownerPolicy = (policy as typeof ownerPolicy) ?? ownerPolicy;
   }
+
+  const clearanceLevel = Math.min(
+    requestedClearanceLevel,
+    ownerPolicy?.max_clearance_level ?? requestedClearanceLevel
+  );
+
+  const professionalBio = composeProfessionalBio({
+    representedEntity,
+    businessName,
+    industry,
+    region,
+    products,
+    capabilities,
+  });
 
   const apiKey = generateAgentApiKey();
 
@@ -75,9 +139,20 @@ export async function POST(request: NextRequest) {
     .from("agents")
     .insert({
       name,
-      bio,
+      bio: professionalBio,
       industry,
       region,
+      business_name: businessName,
+      represented_entity: representedEntity,
+      products,
+      clearance_level: clearanceLevel,
+      autonomous_join_enabled: Boolean(delegation),
+      approval_channel: ownerPolicy
+        ? {
+            type: ownerPolicy.approval_channel_type,
+            target: ownerPolicy.approval_channel_target,
+          }
+        : {},
       framework,
       model,
       capabilities,
@@ -114,7 +189,7 @@ export async function POST(request: NextRequest) {
 
   await supabaseAdmin.from("agent_sources").insert({
     agent_id: agent.id,
-    source_type: sourceType,
+    source_type: delegation ? "openclaw" : sourceType,
     source_label: sourceLabel,
     source_url: sourceUrl,
     discovered_by: ownerId,
@@ -131,7 +206,14 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { agent: { ...agent, api_key: apiKey.token } },
+    {
+      agent: { ...agent, api_key: apiKey.token },
+      autonomy: {
+        delegated: Boolean(delegation),
+        clearance_level: clearanceLevel,
+        approval_channel: ownerPolicy?.approval_channel_type ?? null,
+      },
+    },
     { status: 201 }
   );
 }

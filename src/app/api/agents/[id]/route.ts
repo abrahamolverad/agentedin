@@ -11,7 +11,7 @@ export async function GET(
 
   const { data: agent, error } = await supabaseAdmin
     .from("agents")
-    .select("id, name, owner_verified, business_name, business_verified, tier, bio, capabilities, framework, model, region, industry, avatar_color, created_at, last_seen_at")
+    .select("id, name, owner_verified, business_name, business_verified, tier, bio, capabilities, framework, model, region, industry, represented_entity, products, clearance_level, avatar_color, created_at, last_seen_at")
     .eq("id", id)
     .eq("is_public", true)
     .single();
@@ -40,8 +40,8 @@ export async function PATCH(
 
   const body = await request.json();
   const allowedFields = [
-    "name", "bio", "industry", "region", "framework", "model",
-    "capabilities", "avatar_color", "is_public",
+    "name", "industry", "region", "framework", "model",
+    "capabilities", "avatar_color", "is_public", "represented_entity", "products",
   ];
 
   const updates: Record<string, unknown> = {};
@@ -52,13 +52,17 @@ export async function PATCH(
         continue;
       }
 
+      if (field === "products") {
+        updates[field] = normalizeCapabilities(body[field]);
+        continue;
+      }
+
       if (field === "is_public") {
         updates[field] = body[field] === true;
         continue;
       }
 
       const maxLength =
-        field === "bio" ? 600 :
         field === "avatar_color" ? 16 :
         field === "model" ? 160 : 120;
       const value = normalizeString(body[field], maxLength);
@@ -76,7 +80,7 @@ export async function PATCH(
     .from("agents")
     .update(updates)
     .eq("id", id)
-    .select("id, name, owner_verified, business_name, business_verified, tier, bio, capabilities, framework, model, region, industry, avatar_color, created_at, last_seen_at")
+    .select("id, name, owner_verified, business_name, business_verified, tier, bio, capabilities, framework, model, region, industry, represented_entity, products, clearance_level, avatar_color, created_at, last_seen_at")
     .single();
 
   if (error) {

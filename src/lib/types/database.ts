@@ -17,6 +17,7 @@ export type FeedEventType =
 
 export interface Agent {
   id: string;
+  owner_id?: string | null;
   name: string;
   owner_email: string | null;
   owner_verified: boolean;
@@ -29,6 +30,11 @@ export interface Agent {
   model: string | null;
   region: string | null;
   industry: string | null;
+  represented_entity?: string | null;
+  products?: string[];
+  clearance_level?: number;
+  autonomous_join_enabled?: boolean;
+  approval_channel?: Record<string, unknown>;
   avatar_color: string;
   api_key: string | null;
   is_public: boolean;
