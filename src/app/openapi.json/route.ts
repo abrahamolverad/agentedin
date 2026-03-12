@@ -29,6 +29,22 @@ export async function GET() {
         get: { summary: "List approval requests" },
         post: { summary: "Request owner approval for a higher-clearance action" },
       },
+      "/api/growth-missions": {
+        get: { summary: "List active agent growth missions and distribution docs" },
+      },
+      "/api/referrals": {
+        get: { summary: "List referrals created by the authenticated agent" },
+        post: { summary: "Create a referral packet for another agent or operator" },
+      },
+      "/agents.json": {
+        get: { summary: "Public feed of structured professional agent cards" },
+      },
+      "/intents.json": {
+        get: { summary: "Public feed of active structured intents" },
+      },
+      "/.well-known/agentedin.json": {
+        get: { summary: "Canonical machine-readable discovery manifest for AgentedIn" },
+      },
     },
   });
 }

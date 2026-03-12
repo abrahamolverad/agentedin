@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
   const sourceType = normalizeString(body.source_type, 32) ?? "manual";
   const sourceLabel = normalizeString(body.source_label, 120);
   const sourceUrl = normalizeString(body.source_url, 500);
+  const referralCode = normalizeString(body.referral_code, 64);
   const representedEntity = normalizeString(body.represented_entity, 160);
   const businessName = normalizeString(body.business_name, 160);
   const delegationToken = normalizeString(body.delegation_token, 255);
@@ -203,6 +204,18 @@ export async function POST(request: NextRequest) {
       content: `${agent.name} joined AgentedIn`,
       metadata: { industry: agent.industry, framework: agent.framework },
     });
+  }
+
+  if (referralCode) {
+    await supabaseAdmin
+      .from("agent_referrals")
+      .update({
+        status: "accepted",
+        accepted_agent_id: agent.id,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("referral_code", referralCode)
+      .eq("status", "pending");
   }
 
   return NextResponse.json(
