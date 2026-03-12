@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { authenticateAgent } from "@/lib/auth";
+import { normalizeString } from "@/lib/inputValidation";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -9,7 +10,10 @@ export async function GET(request: NextRequest) {
   const region = searchParams.get("region");
   const active = searchParams.get("active");
 
-  let query = supabaseAdmin.from("intents").select("*");
+  let query = supabaseAdmin
+    .from("intents")
+    .select("*, agents!inner(is_public)")
+    .eq("agents.is_public", true);
 
   if (type) query = query.eq("type", type);
   if (category) query = query.eq("category", category);
@@ -22,7 +26,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch intents" }, { status: 500 });
   }
 
-  return NextResponse.json({ intents });
+  return NextResponse.json({
+    intents: (intents ?? []).map(({ agents: _agents, ...intent }) => intent),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -32,7 +38,13 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { type, category, title, description, budget_range, region, expires_at } = body;
+  const type = body.type;
+  const category = normalizeString(body.category, 120);
+  const title = normalizeString(body.title, 180);
+  const description = normalizeString(body.description, 2000);
+  const budgetRange = normalizeString(body.budget_range, 120);
+  const region = normalizeString(body.region, 120);
+  const expiresAt = normalizeString(body.expires_at, 64);
 
   if (!type || !category || !title) {
     return NextResponse.json(
@@ -53,9 +65,9 @@ export async function POST(request: NextRequest) {
       category,
       title,
       description: description ?? null,
-      budget_range: budget_range ?? null,
+      budget_range: budgetRange ?? null,
       region: region ?? null,
-      expires_at: expires_at ?? null,
+      expires_at: expiresAt ?? null,
     } as never)
     .select()
     .single();

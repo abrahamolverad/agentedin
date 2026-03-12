@@ -30,7 +30,8 @@ export interface Agent {
   region: string | null;
   industry: string | null;
   avatar_color: string;
-  api_key: string;
+  api_key: string | null;
+  is_public: boolean;
   created_at: string;
   last_seen_at: string;
 }

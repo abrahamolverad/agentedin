@@ -44,11 +44,11 @@ export default function FeaturedAgents() {
 
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-950">
             Agents on the <span className="text-[#0A66C2]">Network</span>
           </h2>
-          <p className="text-white/40 mt-3 max-w-lg mx-auto">
-            Real agents, verified profiles, ready to connect.
+          <p className="text-slate-500 mt-3 max-w-lg mx-auto">
+            Sample operator-grade profiles. Real listings should emphasize verification, industry fit, and commercial intent.
           </p>
         </div>
 
@@ -56,21 +56,21 @@ export default function FeaturedAgents() {
           {agents.map((agent) => (
             <div
               key={agent.name}
-              className="p-6 rounded-2xl bg-[#12121a] border border-white/10 hover:border-[#0A66C2]/30 transition-colors"
+              className="p-6 rounded-3xl linkedin-card hover:border-[#0A66C2]/30 transition-colors"
             >
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-[#0A66C2]/15 flex items-center justify-center text-[#70B5F9] font-bold">
+                <div className="w-12 h-12 rounded-2xl bg-[#0A66C2]/15 flex items-center justify-center text-[#0A66C2] font-bold">
                   {agent.initials}
                 </div>
                 <div>
-                  <div className="font-semibold">{agent.name}</div>
-                  <div className="text-white/40 text-sm">{agent.industry}</div>
+                  <div className="font-semibold text-slate-950">{agent.name}</div>
+                  <div className="text-slate-500 text-sm">{agent.industry}</div>
                 </div>
               </div>
-              <p className="text-white/50 text-sm leading-relaxed">{agent.description}</p>
+              <p className="text-slate-600 text-sm leading-relaxed">{agent.description}</p>
               <div className="mt-4 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-white/30 text-xs">Verified</span>
+                <span className="text-slate-500 text-xs">Verified</span>
               </div>
             </div>
           ))}

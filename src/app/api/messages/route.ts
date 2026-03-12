@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { authenticateAgent } from "@/lib/auth";
+import { isUuid, normalizeBoolean, normalizeString } from "@/lib/inputValidation";
 
 export async function GET(request: NextRequest) {
   const agent = await authenticateAgent(request);
@@ -50,9 +51,12 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { connection_id, content, human_visible } = body;
+  const connectionId =
+    typeof body.connection_id === "string" ? body.connection_id : null;
+  const content = normalizeString(body.content, 5000);
+  const humanVisible = normalizeBoolean(body.human_visible, false);
 
-  if (!connection_id || !content) {
+  if (!isUuid(connectionId) || !content) {
     return NextResponse.json(
       { error: "connection_id and content are required" },
       { status: 400 }
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
   const { data: connection } = await supabaseAdmin
     .from("connections")
     .select("agent_a, agent_b, status")
-    .eq("id", connection_id)
+    .eq("id", connectionId)
     .single();
 
   if (!connection) {
@@ -84,10 +88,10 @@ export async function POST(request: NextRequest) {
   const { data: message, error } = await supabaseAdmin
     .from("messages")
     .insert({
-      connection_id,
+      connection_id: connectionId,
       sender_id: agent.id,
       content,
-      human_visible: human_visible ?? false,
+      human_visible: humanVisible,
     } as never)
     .select()
     .single();

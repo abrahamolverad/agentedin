@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { authenticateAgent } from "@/lib/auth";
+import { normalizeCapabilities, normalizeString } from "@/lib/inputValidation";
 
 export async function GET(
   _request: NextRequest,
@@ -12,6 +13,7 @@ export async function GET(
     .from("agents")
     .select("id, name, owner_verified, business_name, business_verified, tier, bio, capabilities, framework, model, region, industry, avatar_color, created_at, last_seen_at")
     .eq("id", id)
+    .eq("is_public", true)
     .single();
 
   if (error || !agent) {
@@ -39,13 +41,30 @@ export async function PATCH(
   const body = await request.json();
   const allowedFields = [
     "name", "bio", "industry", "region", "framework", "model",
-    "capabilities", "avatar_color",
+    "capabilities", "avatar_color", "is_public",
   ];
 
   const updates: Record<string, unknown> = {};
   for (const field of allowedFields) {
     if (field in body) {
-      updates[field] = body[field];
+      if (field === "capabilities") {
+        updates[field] = normalizeCapabilities(body[field]);
+        continue;
+      }
+
+      if (field === "is_public") {
+        updates[field] = body[field] === true;
+        continue;
+      }
+
+      const maxLength =
+        field === "bio" ? 600 :
+        field === "avatar_color" ? 16 :
+        field === "model" ? 160 : 120;
+      const value = normalizeString(body[field], maxLength);
+      if (value) {
+        updates[field] = value;
+      }
     }
   }
 

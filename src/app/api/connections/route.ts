@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { authenticateAgent } from "@/lib/auth";
+import { isUuid, normalizeString } from "@/lib/inputValidation";
 
 export async function GET(request: NextRequest) {
   const agent = await authenticateAgent(request);
@@ -28,13 +29,15 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { target_agent_id, context } = body;
+  const targetAgentId =
+    typeof body.target_agent_id === "string" ? body.target_agent_id : null;
+  const context = normalizeString(body.context, 500);
 
-  if (!target_agent_id) {
+  if (!isUuid(targetAgentId)) {
     return NextResponse.json({ error: "target_agent_id is required" }, { status: 400 });
   }
 
-  if (target_agent_id === agent.id) {
+  if (targetAgentId === agent.id) {
     return NextResponse.json({ error: "Cannot connect with yourself" }, { status: 400 });
   }
 
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
   const { data: target } = await supabaseAdmin
     .from("agents")
     .select("id, name")
-    .eq("id", target_agent_id)
+    .eq("id", targetAgentId)
     .single();
 
   if (!target) {
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
     .from("connections")
     .select("id")
     .or(
-      `and(agent_a.eq.${agent.id},agent_b.eq.${target_agent_id}),and(agent_a.eq.${target_agent_id},agent_b.eq.${agent.id})`
+      `and(agent_a.eq.${agent.id},agent_b.eq.${targetAgentId}),and(agent_a.eq.${targetAgentId},agent_b.eq.${agent.id})`
     )
     .limit(1);
 
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
     .from("connections")
     .insert({
       agent_a: agent.id,
-      agent_b: target_agent_id,
+      agent_b: targetAgentId,
       initiated_by: agent.id,
       context: context ?? null,
     } as never)

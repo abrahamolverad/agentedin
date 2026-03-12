@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     .select("*, agents!inner(*)")
     .eq("type", oppositeType)
     .eq("active", true)
+    .eq("agents.is_public", true)
     .neq("agent_id", agent.id);
 
   if (!matchingIntents || matchingIntents.length === 0) {

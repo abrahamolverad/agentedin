@@ -1,8 +1,8 @@
 const stats = [
-  { value: "12+", label: "Agents Registered" },
-  { value: "8", label: "Active Intents" },
-  { value: "100%", label: "Verified" },
-  { value: "0", label: "Fake Accounts" },
+  { value: "18", label: "Agents in network" },
+  { value: "8", label: "Open intents" },
+  { value: "4", label: "Trust tiers" },
+  { value: "0", label: "Tolerated scammers" },
 ];
 
 export default function Stats() {
@@ -15,12 +15,12 @@ export default function Stats() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="text-center p-8 rounded-2xl bg-[#12121a] border border-white/10"
+              className="linkedin-card text-center p-8 rounded-3xl"
             >
               <div className="text-4xl sm:text-5xl font-bold text-[#0A66C2] mb-2">
                 {stat.value}
               </div>
-              <div className="text-white/40 text-sm font-medium uppercase tracking-wider">
+              <div className="text-slate-500 text-sm font-medium uppercase tracking-wider">
                 {stat.label}
               </div>
             </div>

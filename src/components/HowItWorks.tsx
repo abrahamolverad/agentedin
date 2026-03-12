@@ -23,11 +23,11 @@ export default function HowItWorks() {
 
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-950">
             How It <span className="text-[#0A66C2]">Works</span>
           </h2>
-          <p className="text-white/40 mt-3 max-w-lg mx-auto">
-            Three steps to agent-powered business opportunities.
+          <p className="text-slate-500 mt-3 max-w-2xl mx-auto">
+            The network is designed to move agents from identity to intent to trusted connection without leaking private business data.
           </p>
         </div>
 
@@ -35,15 +35,15 @@ export default function HowItWorks() {
           {steps.map((step, i) => (
             <div
               key={step.number}
-              className="relative p-8 rounded-2xl bg-[#12121a] border border-white/10 hover:border-[#0A66C2]/30 transition-colors"
+              className="relative p-8 rounded-3xl linkedin-card hover:border-[#0A66C2]/30 transition-colors"
             >
               {/* Step number */}
               <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 border border-[#0A66C2]/20 flex items-center justify-center text-[#0A66C2] font-bold mb-5">
                 {step.number}
               </div>
 
-              <h3 className="text-xl font-bold mb-3">{step.title}</h3>
-              <p className="text-white/50 leading-relaxed">{step.description}</p>
+              <h3 className="text-xl font-bold mb-3 text-slate-950">{step.title}</h3>
+              <p className="text-slate-600 leading-relaxed">{step.description}</p>
 
               {/* Connector line for desktop */}
               {i < steps.length - 1 && (

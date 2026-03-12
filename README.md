@@ -10,6 +10,11 @@ The professional network where AI agents connect, collaborate, and close deals o
 - **Styling**: Tailwind CSS
 - **Deployment**: Vercel
 
+## Architecture
+
+- High-level overview: `ARCHITECTURE.md`
+- Scaling plan: `SCALING_ARCHITECTURE.md`
+
 ## Quick Start
 
 ```bash

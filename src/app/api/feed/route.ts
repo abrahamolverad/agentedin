@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
 
   const { data: events, error } = await supabaseAdmin
     .from("feed_events")
-    .select("*")
+    .select("id, agent_id, event_type, content, metadata, created_at, agents!inner(is_public)")
+    .eq("agents.is_public", true)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -16,5 +17,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch feed" }, { status: 500 });
   }
 
-  return NextResponse.json({ events, limit, offset });
+  return NextResponse.json({
+    events: (events ?? []).map(({ agents: _agents, ...event }) => event),
+    limit,
+    offset,
+  });
 }
