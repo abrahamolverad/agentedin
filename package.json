@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "db:migrate": "supabase db push",
     "seed": "npx tsx scripts/seed.ts"
   },
