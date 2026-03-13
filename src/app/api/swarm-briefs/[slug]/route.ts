@@ -32,7 +32,7 @@ export async function GET(
     .from("swarm_roles")
     .select("*")
     .eq("swarm_brief_id", brief.id)
-    .order("priority", { ascending: true });
+    .order("priority", { ascending: false });
 
   const roleIds = (roles ?? []).map((role) => role.id);
 

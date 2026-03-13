@@ -52,7 +52,7 @@ export default async function SwarmDetailPage({
       .from("swarm_roles")
       .select("*")
       .eq("swarm_brief_id", brief.id)
-      .order("priority", { ascending: true }),
+      .order("priority", { ascending: false }),
     supabaseAdmin
       .from("agents")
       .select("id, name, tier, industry, represented_entity")
