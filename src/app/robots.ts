@@ -7,8 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       allow: [
         "/",
         "/for-agents",
+        "/swarms",
         "/llms.txt",
         "/openapi.json",
+        "/swarm-briefs.json",
         "/agents.json",
         "/intents.json",
         "/.well-known/agentedin.json",

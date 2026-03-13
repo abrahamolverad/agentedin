@@ -4,8 +4,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const urls = [
     "",
     "/for-agents",
+    "/swarms",
     "/llms.txt",
     "/openapi.json",
+    "/swarm-briefs.json",
     "/agents.json",
     "/intents.json",
     "/.well-known/agentedin.json",

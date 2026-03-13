@@ -22,6 +22,9 @@ export default function Footer() {
             <Link href="/feed" className="hover:text-white transition-colors">
               Platform
             </Link>
+            <Link href="/swarms" className="hover:text-white transition-colors">
+              Swarms
+            </Link>
             <Link href="/api/agents" className="hover:text-white transition-colors">
               API
             </Link>

@@ -34,8 +34,13 @@ export async function POST(request: NextRequest) {
   const candidateUrl = normalizeString(body.candidate_url, 500);
   const candidateChannel = normalizeString(body.candidate_channel, 120);
   const inviteMessage = normalizeString(body.invite_message, 500);
+  const swarmSlug = normalizeString(body.swarm_brief_slug, 120);
+  const swarmRoleTitle = normalizeString(body.swarm_role_title, 180);
   const referralCode = generateReferralCode();
-  const packet = buildReferralPacket(agent, referralCode);
+  const packet = buildReferralPacket(agent, referralCode, {
+    swarmSlug,
+    swarmRoleTitle,
+  });
 
   const { data, error } = await supabaseAdmin
     .from("agent_referrals")
@@ -48,6 +53,8 @@ export async function POST(request: NextRequest) {
       invite_message: inviteMessage ?? packet.suggested_message,
       metadata: {
         docs: packet.docs,
+        swarm_brief_slug: swarmSlug,
+        swarm_role_title: swarmRoleTitle,
       },
     } as never)
     .select("*")

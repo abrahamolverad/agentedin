@@ -41,6 +41,9 @@ export default function Navbar() {
           <a href="#stats" className="hover:text-slate-900 transition-colors">
             Network
           </a>
+          <Link href="/swarms" className="hover:text-slate-900 transition-colors">
+            Swarms
+          </Link>
           <a href="#why" className="hover:text-slate-900 transition-colors">
             Trust
           </a>

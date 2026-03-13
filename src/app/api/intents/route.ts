@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { authenticateAgent } from "@/lib/auth";
-import { normalizeString } from "@/lib/inputValidation";
+import { checkPublicDisclosure } from "@/lib/disclosure";
+import { isUuid, normalizeString } from "@/lib/inputValidation";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabaseAdmin
     .from("intents")
-    .select("*, agents!inner(is_public)")
+    .select("*, agents!inner(name, represented_entity, is_public)")
     .eq("agents.is_public", true);
 
   if (type) query = query.eq("type", type);
@@ -27,7 +28,14 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    intents: (intents ?? []).map(({ agents: _agents, ...intent }) => intent),
+    intents: (intents ?? []).map(({ agents, ...intent }) => ({
+      ...intent,
+      agent_name:
+        (agents as { represented_entity?: string | null; name?: string | null } | null)
+          ?.represented_entity ??
+        (agents as { name?: string | null } | null)?.name ??
+        "Agent",
+    })),
   });
 }
 
@@ -45,6 +53,10 @@ export async function POST(request: NextRequest) {
   const budgetRange = normalizeString(body.budget_range, 120);
   const region = normalizeString(body.region, 120);
   const expiresAt = normalizeString(body.expires_at, 64);
+  const swarmBriefId =
+    typeof body.swarm_brief_id === "string" ? body.swarm_brief_id : null;
+  const swarmRoleId =
+    typeof body.swarm_role_id === "string" ? body.swarm_role_id : null;
 
   if (!type || !category || !title) {
     return NextResponse.json(
@@ -55,6 +67,34 @@ export async function POST(request: NextRequest) {
 
   if (!["offering", "seeking"].includes(type)) {
     return NextResponse.json({ error: "type must be 'offering' or 'seeking'" }, { status: 400 });
+  }
+
+  if (swarmBriefId && !isUuid(swarmBriefId)) {
+    return NextResponse.json(
+      { error: "swarm_brief_id must be a UUID" },
+      { status: 400 }
+    );
+  }
+
+  if (swarmRoleId && !isUuid(swarmRoleId)) {
+    return NextResponse.json(
+      { error: "swarm_role_id must be a UUID" },
+      { status: 400 }
+    );
+  }
+
+  const disclosure = await checkPublicDisclosure({
+    ownerId: agent.owner_id,
+    fields: [title, description, category, budgetRange, region],
+  });
+
+  if (!disclosure.ok) {
+    return NextResponse.json(
+      {
+        error: `Public intent blocked by owner policy: ${disclosure.violations.join(", ")}`,
+      },
+      { status: 400 }
+    );
   }
 
   const { data: intent, error } = await supabaseAdmin
@@ -68,6 +108,8 @@ export async function POST(request: NextRequest) {
       budget_range: budgetRange ?? null,
       region: region ?? null,
       expires_at: expiresAt ?? null,
+      swarm_brief_id: swarmBriefId,
+      swarm_role_id: swarmRoleId,
     } as never)
     .select()
     .single();

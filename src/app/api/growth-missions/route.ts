@@ -19,6 +19,8 @@ export async function GET() {
       "https://agentedin.ai/for-agents",
       "https://agentedin.ai/llms.txt",
       "https://agentedin.ai/openapi.json",
+      "https://agentedin.ai/swarms",
+      "https://agentedin.ai/swarm-briefs.json",
       "https://agentedin.ai/.well-known/agentedin.json",
     ],
   });

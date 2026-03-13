@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { authenticateAgent } from "@/lib/auth";
 
+function tokenize(values: Array<string | null | undefined>) {
+  return new Set(
+    values
+      .join(" ")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/g)
+      .filter((value) => value.length >= 3)
+  );
+}
+
+function getStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 export async function POST(request: NextRequest) {
   const agent = await authenticateAgent(request);
   if (!agent) {
@@ -46,6 +62,18 @@ export async function POST(request: NextRequest) {
   const matches = matchingIntents.map((matchIntent) => {
     const matchAgent = matchIntent.agents as Record<string, unknown>;
     let score = 0;
+    const sourceKeywords = tokenize([
+      intent.category,
+      intent.title,
+      intent.description,
+    ]);
+    const targetKeywords = tokenize([
+      matchIntent.category,
+      matchIntent.title,
+      matchIntent.description,
+      ...getStringArray(matchAgent.products),
+      ...getStringArray(matchAgent.capabilities),
+    ]);
 
     // Category overlap: +50
     if (matchIntent.category === intent.category) {
@@ -62,6 +90,12 @@ export async function POST(request: NextRequest) {
       score += 20;
     }
 
+    const keywordOverlap = [...sourceKeywords].filter((token) =>
+      targetKeywords.has(token)
+    ).length;
+
+    score += Math.min(keywordOverlap * 6, 24);
+
     return {
       agent_id: matchAgent.id,
       agent_name: matchAgent.name,
@@ -69,6 +103,7 @@ export async function POST(request: NextRequest) {
       intent_title: matchIntent.title,
       category: matchIntent.category,
       match_score: score,
+      overlap_terms: [...sourceKeywords].filter((token) => targetKeywords.has(token)).slice(0, 6),
     };
   });
 

@@ -45,6 +45,8 @@ export interface Agent {
 export interface Intent {
   id: string;
   agent_id: string;
+  swarm_brief_id?: string | null;
+  swarm_role_id?: string | null;
   type: IntentType;
   category: string;
   title: string;
@@ -98,6 +100,52 @@ export interface FeedEvent {
   created_at: string;
 }
 
+export interface SwarmBrief {
+  id: string;
+  owner_agent_id: string;
+  slug: string;
+  title: string;
+  business_name: string | null;
+  represented_entity: string | null;
+  product_name: string;
+  summary: string;
+  region: string | null;
+  target_outcome: string | null;
+  budget_range: string | null;
+  stage: string;
+  tags: string[];
+  public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SwarmRole {
+  id: string;
+  swarm_brief_id: string;
+  role_type: string;
+  title: string;
+  category: string;
+  description: string | null;
+  region: string | null;
+  budget_range: string | null;
+  desired_capabilities: string[];
+  status: "open" | "connected" | "filled" | "paused";
+  priority: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SwarmRoleApplication {
+  id: string;
+  swarm_role_id: string;
+  applicant_agent_id: string;
+  connection_id: string | null;
+  status: "pending" | "connected" | "accepted" | "rejected" | "withdrawn";
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -130,6 +178,24 @@ export interface Database {
         Row: FeedEvent;
         Insert: Omit<FeedEvent, "id" | "created_at" | "metadata"> & Partial<Pick<FeedEvent, "id" | "created_at" | "metadata">>;
         Update: Partial<Omit<FeedEvent, "id">>;
+      };
+      swarm_briefs: {
+        Row: SwarmBrief;
+        Insert: Omit<SwarmBrief, "id" | "created_at" | "updated_at" | "public"> &
+          Partial<Pick<SwarmBrief, "id" | "created_at" | "updated_at" | "public">>;
+        Update: Partial<Omit<SwarmBrief, "id">>;
+      };
+      swarm_roles: {
+        Row: SwarmRole;
+        Insert: Omit<SwarmRole, "id" | "created_at" | "updated_at" | "status"> &
+          Partial<Pick<SwarmRole, "id" | "created_at" | "updated_at" | "status">>;
+        Update: Partial<Omit<SwarmRole, "id">>;
+      };
+      swarm_role_applications: {
+        Row: SwarmRoleApplication;
+        Insert: Omit<SwarmRoleApplication, "id" | "created_at" | "updated_at" | "status" | "connection_id" | "note"> &
+          Partial<Pick<SwarmRoleApplication, "id" | "created_at" | "updated_at" | "status" | "connection_id" | "note">>;
+        Update: Partial<Omit<SwarmRoleApplication, "id">>;
       };
     };
   };
