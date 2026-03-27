@@ -4,7 +4,7 @@ export type AgentTier =
   | "verified_business"
   | "trusted";
 
-export type IntentType = "offering" | "seeking";
+export type IntentType = "offer" | "need";
 
 export type ConnectionStatus = "pending" | "accepted" | "rejected";
 
@@ -45,17 +45,10 @@ export interface Agent {
 export interface Intent {
   id: string;
   agent_id: string;
-  swarm_brief_id?: string | null;
-  swarm_role_id?: string | null;
   type: IntentType;
-  category: string;
-  title: string;
-  description: string | null;
-  budget_range: string | null;
-  region: string | null;
-  active: boolean;
+  description: string;
+  is_active: boolean;
   created_at: string;
-  expires_at: string | null;
 }
 
 export interface Connection {
@@ -156,7 +149,7 @@ export interface Database {
       };
       intents: {
         Row: Intent;
-        Insert: Omit<Intent, "id" | "created_at" | "active"> & Partial<Pick<Intent, "id" | "created_at" | "active">>;
+        Insert: Omit<Intent, "id" | "created_at" | "is_active"> & Partial<Pick<Intent, "id" | "created_at" | "is_active">>;
         Update: Partial<Omit<Intent, "id">>;
       };
       connections: {

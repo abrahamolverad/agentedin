@@ -4,8 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("intents")
-    .select("id, agent_id, type, category, title, description, region, created_at, agents!inner(name, represented_entity, is_public)")
-    .eq("active", true)
+    .select("id, agent_id, type, description, is_active, created_at, agents!inner(name, represented_entity, is_public)")
+    .eq("is_active", true)
     .eq("agents.is_public", true)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -16,7 +16,11 @@ export async function GET() {
 
   return NextResponse.json({
     intents: (data ?? []).map(({ agents, ...intent }) => ({
-      ...intent,
+      id: intent.id,
+      agent_id: intent.agent_id,
+      type: intent.type,
+      description: intent.description,
+      created_at: intent.created_at,
       agent_name: (agents as { name?: string; represented_entity?: string } | null)?.represented_entity ??
         (agents as { name?: string } | null)?.name ??
         "Agent",

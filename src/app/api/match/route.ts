@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { authenticateAgent } from "@/lib/auth";
-
-function tokenize(values: Array<string | null | undefined>) {
-  return new Set(
-    values
-      .join(" ")
-      .toLowerCase()
-      .split(/[^a-z0-9]+/g)
-      .filter((value) => value.length >= 3)
-  );
-}
-
-function getStringArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
+import { normalizeString } from "@/lib/inputValidation";
 
 export async function POST(request: NextRequest) {
   const agent = await authenticateAgent(request);
@@ -25,85 +10,63 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { intent_id } = body;
+  const description = normalizeString(body.description, 2000);
 
-  if (!intent_id) {
-    return NextResponse.json({ error: "intent_id is required" }, { status: 400 });
+  if (!description) {
+    return NextResponse.json({ error: "description is required" }, { status: 400 });
   }
 
-  // Get the intent to match against
-  const { data: intent } = await supabaseAdmin
-    .from("intents")
-    .select("*")
-    .eq("id", intent_id)
-    .eq("agent_id", agent.id)
-    .single();
+  // Extract meaningful tokens (3+ chars) from the query description
+  const tokens = description
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3);
 
-  if (!intent) {
-    return NextResponse.json({ error: "Intent not found or not yours" }, { status: 404 });
+  if (tokens.length === 0) {
+    return NextResponse.json({ matches: [] });
   }
 
-  // Find matching intents: if seeking, find offerings; if offering, find seekings
-  const oppositeType = intent.type === "seeking" ? "offering" : "seeking";
+  // Build an OR filter: each token checked against description via ilike
+  const ilikeFilter = tokens.map((t) => `description.ilike.%${t}%`).join(",");
 
-  const { data: matchingIntents } = await supabaseAdmin
+  const { data: matchingIntents, error } = await supabaseAdmin
     .from("intents")
-    .select("*, agents!inner(*)")
-    .eq("type", oppositeType)
-    .eq("active", true)
+    .select("id, agent_id, type, description, is_active, created_at, agents!inner(name, represented_entity, is_public)")
+    .eq("is_active", true)
     .eq("agents.is_public", true)
-    .neq("agent_id", agent.id);
+    .neq("agent_id", agent.id)
+    .or(ilikeFilter);
+
+  if (error) {
+    return NextResponse.json({ error: "Failed to search intents" }, { status: 500 });
+  }
 
   if (!matchingIntents || matchingIntents.length === 0) {
     return NextResponse.json({ matches: [] });
   }
 
-  // Score matches
-  const matches = matchingIntents.map((matchIntent) => {
-    const matchAgent = matchIntent.agents as Record<string, unknown>;
-    let score = 0;
-    const sourceKeywords = tokenize([
-      intent.category,
-      intent.title,
-      intent.description,
-    ]);
-    const targetKeywords = tokenize([
-      matchIntent.category,
-      matchIntent.title,
-      matchIntent.description,
-      ...getStringArray(matchAgent.products),
-      ...getStringArray(matchAgent.capabilities),
-    ]);
+  // Score by number of matching tokens
+  const queryTokens = new Set(tokens);
 
-    // Category overlap: +50
-    if (matchIntent.category === intent.category) {
-      score += 50;
-    }
+  const matches = matchingIntents.map((intent) => {
+    const targetTokens = new Set(
+      intent.description
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((t: string) => t.length >= 3)
+    );
 
-    // Same industry: +30
-    if (matchAgent.industry && matchAgent.industry === agent.industry) {
-      score += 30;
-    }
-
-    // Same region: +20
-    if (matchIntent.region && matchIntent.region === intent.region) {
-      score += 20;
-    }
-
-    const keywordOverlap = [...sourceKeywords].filter((token) =>
-      targetKeywords.has(token)
-    ).length;
-
-    score += Math.min(keywordOverlap * 6, 24);
+    const overlap = [...queryTokens].filter((t) => targetTokens.has(t));
+    const matchAgent = intent.agents as { name?: string; represented_entity?: string } | null;
 
     return {
-      agent_id: matchAgent.id,
-      agent_name: matchAgent.name,
-      intent_id: matchIntent.id,
-      intent_title: matchIntent.title,
-      category: matchIntent.category,
-      match_score: score,
-      overlap_terms: [...sourceKeywords].filter((token) => targetKeywords.has(token)).slice(0, 6),
+      intent_id: intent.id,
+      agent_id: intent.agent_id,
+      agent_name: matchAgent?.represented_entity ?? matchAgent?.name ?? "Agent",
+      type: intent.type,
+      description: intent.description,
+      match_score: overlap.length,
+      overlap_terms: overlap.slice(0, 8),
     };
   });
 
